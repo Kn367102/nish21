@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Swadeshi Voice Translator</title>
   <style>
     * {
@@ -19,6 +20,7 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      padding: 20px;
     }
 
     @keyframes gradientShift {
@@ -32,7 +34,7 @@
       backdrop-filter: blur(16px);
       border-radius: 16px;
       padding: 40px;
-      width: 90%;
+      width: 100%;
       max-width: 1000px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.25);
       text-align: center;
@@ -55,10 +57,11 @@
 
     select, button, input, textarea {
       padding: 12px 16px;
-      margin: 10px 5px;
+      margin: 10px 0;
       border-radius: 8px;
       border: none;
       font-size: 16px;
+      width: 100%;
     }
 
     select, input, textarea {
@@ -70,6 +73,7 @@
 
     textarea {
       resize: none;
+      height: 120px;
     }
 
     input::placeholder, textarea::placeholder {
@@ -86,10 +90,19 @@
       font-weight: bold;
       cursor: pointer;
       transition: all 0.3s ease;
+      width: auto;
+      min-width: 150px;
     }
 
     button:hover {
       background-color: #0072ff;
+      transform: translateY(-2px);
+    }
+
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .hidden {
@@ -119,11 +132,6 @@
       flex: 1;
     }
 
-    .text-boxes textarea {
-      width: 100%;
-      height: 100px;
-    }
-
     #translateBtn {
       background-color: #0072ff;
       color: white;
@@ -142,9 +150,104 @@
       width: 100%;
     }
 
-    #recordingStatus {
-      color: #ff4d4d;
-      font-weight: bold;
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-connected {
+      background-color: #4CAF50;
+      box-shadow: 0 0 8px #4CAF50;
+    }
+
+    .status-disconnected {
+      background-color: #f44336;
+    }
+
+    .status-recording {
+      background-color: #FF9800;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .swap-btn {
+      background: transparent;
+      border: 2px solid rgba(255,255,255,0.3);
+      padding: 10px;
+      min-width: auto;
+      margin-top: 35px;
+    }
+
+    .language-selectors {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .language-selector {
+      flex: 1;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+      margin-left: 10px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .card {
+        padding: 20px;
+      }
+      
+      .text-boxes {
+        flex-direction: column;
+      }
+      
+      #translateBtn {
+        margin-top: 10px;
+        width: 100%;
+      }
+      
+      .language-selectors {
+        flex-direction: column;
+      }
+      
+      .swap-btn {
+        margin-top: 0;
+        transform: rotate(90deg);
+      }
     }
   </style>
 </head>
@@ -155,11 +258,17 @@
 
     <!-- Text Translator Section -->
     <div id="textMode">
-      <label for="srcTextLang">From Language</label>
-      <select id="srcTextLang"></select>
-
-      <label for="tgtTextLang">To Language</label>
-      <select id="tgtTextLang"></select>
+      <div class="language-selectors">
+        <div class="language-selector">
+          <label for="srcTextLang">From Language</label>
+          <select id="srcTextLang"></select>
+        </div>
+        <button class="swap-btn" onclick="swapTextLanguages()">🔁</button>
+        <div class="language-selector">
+          <label for="tgtTextLang">To Language</label>
+          <select id="tgtTextLang"></select>
+        </div>
+      </div>
 
       <div class="text-boxes">
         <div class="box">
@@ -167,53 +276,63 @@
           <textarea id="inputText" placeholder="Type or paste text here..."></textarea>
         </div>
 
-        <!-- Translate Button -->
-        <div>
-          <button id="translateBtn" onclick="translateText()">➡️ Translate</button>
-        </div>
-
         <div class="box">
           <label for="outputText">Output Text</label>
           <textarea id="outputText" readonly placeholder="Translation will appear here..."></textarea>
         </div>
       </div>
+
+      <div class="action-buttons">
+        <button id="translateBtn" onclick="translateText()">
+          <span id="translateText">➡️ Translate</span>
+          <span id="translateLoading" class="loading hidden"></span>
+        </button>
+        <button onclick="speakOutput()" id="speakOutputBtn" disabled>🔊 Speak</button>
+        <button onclick="copyOutput()">⎘ Copy</button>
+      </div>
     </div>
 
     <!-- Speech Translator Section -->
-    <!-- Speech Translator Section -->
-<div id="speechMode" class="hidden">
-  <label for="deviceId">Device ID</label>
-  <input type="text" id="deviceId" placeholder="e.g. device1" />
+    <div id="speechMode" class="hidden">
+      <label for="deviceId">Device ID (for multi-device sync)</label>
+      <input type="text" id="deviceId" placeholder="e.g. device1" />
 
-  <div style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
-  <div style="flex: 1;">
-    <label for="srcSpeechLang">From Language</label>
-    <select id="srcSpeechLang"></select>
+      <div class="connection-status">
+        <span id="wsStatusIndicator" class="status-indicator status-disconnected"></span>
+        <span id="wsStatusText">Disconnected</span>
+      </div>
+
+      <div class="language-selectors">
+        <div class="language-selector">
+          <label for="srcSpeechLang">From Language</label>
+          <select id="srcSpeechLang"></select>
+        </div>
+        <button class="swap-btn" onclick="swapSpeechLanguages()">🔁</button>
+        <div class="language-selector">
+          <label for="tgtSpeechLang">To Language</label>
+          <select id="tgtSpeechLang"></select>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button onclick="connectWS()" id="connectBtn">🔗 Connect</button>
+        <button id="speakBtn" disabled onclick="toggleRecording()">
+          <span id="speakText">🎤 Start Recording</span>
+          <span id="speakLoading" class="loading hidden"></span>
+        </button>
+        <button id="listenBtn" disabled onclick="replayAudio()">🔈 Listen</button>
+      </div>
+
+      <div class="connection-status">
+        <span id="recordingStatus"></span>
+      </div>
+
+      <audio id="audioPlayer" controls></audio>
+    </div>
   </div>
-
-  <div>
-    <button id="swapSpeechBtn" title="Swap languages" style="margin-top: 25px;">🔁</button>
-  </div>
-
-  <div style="flex: 1;">
-    <label for="tgtSpeechLang">To Language</label>
-    <select id="tgtSpeechLang"></select>
-  </div>
-</div>
-
-
-  <div style="margin-top: 20px;">
-    <button onclick="connectWS()">🔗 Connect</button>
-    <button id="speakBtn" disabled onclick="toggleRecording()">🎤 Start Recording</button>
-    <span id="recordingStatus"></span>
-    <button id="listenBtn" disabled onclick="replayAudio()">🔈 Listen</button>
-  </div>
-
-  <audio id="audioPlayer" controls></audio>
-</div>
-
 
   <script>
+    // Supported languages
     const langs = [
       "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", "Hindi", "Kannada", "Kashmiri",
       "Konkani", "Maithili", "Malayalam", "Manipuri", "Marathi", "Odia", "Punjabi",
@@ -221,108 +340,383 @@
       "Bhojpuri", "Chhattisgarhi", "Rajasthani"
     ];
 
+    // DOM elements
     const srcTextLang = document.getElementById("srcTextLang");
     const tgtTextLang = document.getElementById("tgtTextLang");
     const srcSpeechLang = document.getElementById("srcSpeechLang");
     const tgtSpeechLang = document.getElementById("tgtSpeechLang");
-
-    langs.forEach(lang => {
-      [srcTextLang, tgtTextLang, srcSpeechLang, tgtSpeechLang].forEach(sel => {
-        sel.add(new Option(lang, lang));
-      });
-    });
-
-    let isRecording = false;
-    let recorder, stream, ws, timer;
+    const inputText = document.getElementById("inputText");
+    const outputText = document.getElementById("outputText");
     const speakBtn = document.getElementById("speakBtn");
     const listenBtn = document.getElementById("listenBtn");
+    const connectBtn = document.getElementById("connectBtn");
     const recordingStatus = document.getElementById("recordingStatus");
     const audioPlayer = document.getElementById("audioPlayer");
+    const wsStatusIndicator = document.getElementById("wsStatusIndicator");
+    const wsStatusText = document.getElementById("wsStatusText");
+    const deviceId = document.getElementById("deviceId");
+    const speakOutputBtn = document.getElementById("speakOutputBtn");
+    const translateLoading = document.getElementById("translateLoading");
+    const translateText = document.getElementById("translateText");
+    const speakLoading = document.getElementById("speakLoading");
+    const speakText = document.getElementById("speakText");
 
+    // State variables
+    let isRecording = false;
+    let recorder, stream, ws;
+    let audioChunks = [];
+    let speechSynthesis = window.speechSynthesis;
+
+    // Initialize language dropdowns
+    function initLanguageDropdowns() {
+      langs.forEach(lang => {
+        [srcTextLang, tgtTextLang, srcSpeechLang, tgtSpeechLang].forEach(sel => {
+          const option = new Option(lang, lang);
+          sel.add(option);
+        });
+      });
+      
+      // Set default languages
+      srcTextLang.value = "Hindi";
+      tgtTextLang.value = "English";
+      srcSpeechLang.value = "Hindi";
+      tgtSpeechLang.value = "English";
+    }
+
+    // Toggle between text and speech modes
     function toggleMode() {
       document.getElementById("textMode").classList.toggle("hidden");
       document.getElementById("speechMode").classList.toggle("hidden");
+      
+      // Disconnect WS when switching to text mode
+      if (!document.getElementById("speechMode").classList.contains("hidden")) {
+        if (ws) {
+          ws.close();
+        }
+      }
     }
 
+    // Swap languages in text mode
+    function swapTextLanguages() {
+      const temp = srcTextLang.value;
+      srcTextLang.value = tgtTextLang.value;
+      tgtTextLang.value = temp;
+      
+      // Also swap text if there's content
+      if (inputText.value && outputText.value) {
+        const tempText = inputText.value;
+        inputText.value = outputText.value;
+        outputText.value = tempText;
+      }
+    }
+
+    // Swap languages in speech mode
+    function swapSpeechLanguages() {
+      const temp = srcSpeechLang.value;
+      srcSpeechLang.value = tgtSpeechLang.value;
+      tgtSpeechLang.value = temp;
+    }
+
+    // Translate text
     async function translateText() {
-      const text = document.getElementById("inputText").value.trim();
+      const text = inputText.value.trim();
       const src = srcTextLang.value;
       const tgt = tgtTextLang.value;
-      if (!text) return alert("Enter text to translate.");
-
-      const res = await fetch("http://localhost:10000/translate-only/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, source_lang: src, target_lang: tgt })
-      });
-      const data = await res.json();
-      document.getElementById("outputText").value = data.translated_text || data.error || "Failed";
+      
+      if (!text) {
+        showAlert("Please enter text to translate");
+        return;
+      }
+      
+      // Show loading indicator
+      translateText.classList.add("hidden");
+      translateLoading.classList.remove("hidden");
+      
+      try {
+        const res = await fetch("http://localhost:10000/translate-only/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            text, 
+            source_lang: src, 
+            target_lang: tgt 
+          })
+        });
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        outputText.value = data.translated_text;
+        speakOutputBtn.disabled = false;
+      } catch (error) {
+        console.error("Translation error:", error);
+        showAlert(`Translation failed: ${error.message}`);
+        outputText.value = "Translation failed. Please try again.";
+      } finally {
+        // Hide loading indicator
+        translateText.classList.remove("hidden");
+        translateLoading.classList.add("hidden");
+      }
     }
 
+    // Connect to WebSocket
     function connectWS() {
       const src = srcSpeechLang.value;
       const tgt = tgtSpeechLang.value;
-      const deviceId = document.getElementById("deviceId").value.trim();
-      if (!deviceId) return alert("Enter a device ID");
-
-      ws = new WebSocket(`ws://localhost:10000/ws/${src}/${tgt}/${deviceId}`);
+      const id = deviceId.value.trim();
+      
+      if (!id) {
+        showAlert("Please enter a device ID");
+        return;
+      }
+      
+      // Update UI
+      connectBtn.disabled = true;
+      speakBtn.disabled = true;
+      listenBtn.disabled = true;
+      wsStatusText.textContent = "Connecting...";
+      wsStatusIndicator.className = "status-indicator";
+      
+      // Close existing connection if any
+      if (ws) {
+        ws.close();
+      }
+      
+      // Create new WebSocket connection
+      ws = new WebSocket(`ws://localhost:10000/ws/${src}/${tgt}/${id}`);
       ws.binaryType = "arraybuffer";
-
+      
       ws.onopen = () => {
         console.log("✅ WebSocket connected");
+        connectBtn.disabled = false;
         speakBtn.disabled = false;
+        wsStatusText.textContent = "Connected";
+        wsStatusIndicator.className = "status-indicator status-connected";
+        showAlert("Connection established", "success");
       };
-
-      ws.onmessage = e => {
-        if (typeof e.data !== "string") {
+      
+      ws.onmessage = (e) => {
+        if (typeof e.data === "string") {
+          // Handle text messages (status updates, etc.)
+          try {
+            const data = JSON.parse(e.data);
+            if (data.type === "status") {
+              showAlert(data.message, "info");
+            }
+          } catch (err) {
+            console.log("Message:", e.data);
+          }
+        } else {
+          // Handle binary data (audio)
           const audioBlob = new Blob([e.data], { type: "audio/mpeg" });
           audioPlayer.src = URL.createObjectURL(audioBlob);
           audioPlayer.play();
           listenBtn.disabled = false;
+          showAlert("Translation received", "success");
         }
       };
-
+      
       ws.onclose = () => {
+        console.log("❌ WebSocket disconnected");
+        connectBtn.disabled = false;
         speakBtn.disabled = true;
         listenBtn.disabled = true;
+        wsStatusText.textContent = "Disconnected";
+        wsStatusIndicator.className = "status-indicator status-disconnected";
+        
+        if (!isRecording) {
+          showAlert("Connection closed", "warning");
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        showAlert("Connection error. Please try again.", "error");
+        wsStatusText.textContent = "Connection failed";
+        connectBtn.disabled = false;
       };
     }
 
+    // Toggle recording
     async function toggleRecording() {
       if (!isRecording) {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        recorder = new MediaRecorder(stream);
-        let chunks = [];
-        recorder.ondataavailable = e => chunks.push(e.data);
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: "audio/webm" });
-          ws.send(blob);
-          speakBtn.textContent = "🎤 Start Recording";
-          recordingStatus.textContent = "";
-          stream.getTracks().forEach(t => t.stop());
-          isRecording = false;
-        };
-        recorder.start();
-        isRecording = true;
-        speakBtn.textContent = "🛑 Stop Recording";
-        recordingStatus.textContent = "Recording...";
+        try {
+          // Show loading indicator
+          speakText.classList.add("hidden");
+          speakLoading.classList.remove("hidden");
+          
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          recorder = new MediaRecorder(stream);
+          audioChunks = [];
+          
+          recorder.ondataavailable = (e) => {
+            audioChunks.push(e.data);
+          };
+          
+          recorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+            
+            try {
+              if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(audioBlob);
+                showAlert("Processing your speech...", "info");
+              } else {
+                throw new Error("Connection not active");
+              }
+            } catch (error) {
+              console.error("Error sending audio:", error);
+              showAlert("Failed to send audio. Please reconnect.", "error");
+            } finally {
+              stream.getTracks().forEach(track => track.stop());
+              speakBtn.textContent = "🎤 Start Recording";
+              recordingStatus.textContent = "";
+              isRecording = false;
+              
+              // Hide loading indicator
+              speakText.classList.remove("hidden");
+              speakLoading.classList.add("hidden");
+            }
+          };
+          
+          recorder.start(100); // Collect data every 100ms
+          isRecording = true;
+          speakBtn.textContent = "🛑 Stop Recording";
+          recordingStatus.innerHTML = '<span class="status-indicator status-recording"></span> Recording...';
+          showAlert("Recording started", "info");
+        } catch (error) {
+          console.error("Recording error:", error);
+          showAlert("Microphone access denied. Please allow microphone permissions.", "error");
+          
+          // Hide loading indicator
+          speakText.classList.remove("hidden");
+          speakLoading.classList.add("hidden");
+        }
       } else {
         recorder.stop();
       }
     }
 
+    // Replay translated audio
     function replayAudio() {
-      if (audioPlayer.src) audioPlayer.play();
+      if (audioPlayer.src) {
+        audioPlayer.play();
+      } else {
+        showAlert("No audio available to play", "warning");
+      }
     }
-// Swap languages in speech mode
-document.getElementById("swapSpeechBtn").onclick = () => {
-  const temp = srcSpeechLang.value;
-  srcSpeechLang.value = tgtSpeechLang.value;
-  tgtSpeechLang.value = temp;
-  console.log(`🔁 Swapped speech: ${srcSpeechLang.value} → ${tgtSpeechLang.value}`);
-};
 
+    // Speak output text
+    function speakOutput() {
+      const text = outputText.value.trim();
+      if (!text) {
+        showAlert("No text available to speak", "warning");
+        return;
+      }
+      
+      if (speechSynthesis.speaking) {
+        speechSynthesis.cancel();
+      }
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = getLanguageCode(tgtTextLang.value);
+      speechSynthesis.speak(utterance);
+    }
 
+    // Copy output text to clipboard
+    function copyOutput() {
+      const text = outputText.value.trim();
+      if (!text) {
+        showAlert("No text to copy", "warning");
+        return;
+      }
+      
+      navigator.clipboard.writeText(text)
+        .then(() => showAlert("Copied to clipboard", "success"))
+        .catch(err => showAlert("Failed to copy text", "error"));
+    }
+
+    // Get language code for speech synthesis
+    function getLanguageCode(langName) {
+      const langMap = {
+        "Hindi": "hi-IN",
+        "English": "en-US",
+        "Bengali": "bn-IN",
+        "Tamil": "ta-IN",
+        "Telugu": "te-IN",
+        "Marathi": "mr-IN",
+        "Gujarati": "gu-IN",
+        "Kannada": "kn-IN",
+        "Malayalam": "ml-IN",
+        "Punjabi": "pa-IN",
+        "Odia": "or-IN",
+        "Urdu": "ur-IN"
+      };
+      
+      return langMap[langName] || "en-US";
+    }
+
+    // Show alert message
+    function showAlert(message, type = "error") {
+      const colors = {
+        error: "#f44336",
+        success: "#4CAF50",
+        warning: "#FF9800",
+        info: "#2196F3"
+      };
+      
+      const alertBox = document.createElement("div");
+      alertBox.style.position = "fixed";
+      alertBox.style.bottom = "20px";
+      alertBox.style.left = "50%";
+      alertBox.style.transform = "translateX(-50%)";
+      alertBox.style.padding = "12px 24px";
+      alertBox.style.backgroundColor = colors[type] || colors.error;
+      alertBox.style.color = "white";
+      alertBox.style.borderRadius = "4px";
+      alertBox.style.boxShadow = "0 2px 10px rgba(0,0,0,0.2)";
+      alertBox.style.zIndex = "1000";
+      alertBox.style.animation = "fadeIn 0.3s";
+      alertBox.textContent = message;
+      
+      document.body.appendChild(alertBox);
+      
+      setTimeout(() => {
+        alertBox.style.animation = "fadeOut 0.3s";
+        setTimeout(() => {
+          document.body.removeChild(alertBox);
+        }, 300);
+      }, 3000);
+    }
+
+    // Initialize the app
+    function init() {
+      initLanguageDropdowns();
+      
+      // Check for speech synthesis support
+      if (!speechSynthesis) {
+        speakOutputBtn.disabled = true;
+        console.warn("Speech synthesis not supported");
+      }
+      
+      // Auto-connect if URL has deviceId parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlDeviceId = urlParams.get('deviceId');
+      
+      if (urlDeviceId) {
+        deviceId.value = urlDeviceId;
+        connectWS();
+      }
+    }
+
+    // Start the app
+    document.addEventListener("DOMContentLoaded", init);
   </script>
 </body>
 </html>
