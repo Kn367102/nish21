@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Swadeshi Voice Translator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(-45deg, #1e3c72, #2a5298, #6dd5ed, #2193b0);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(16px);
+      border-radius: 16px;
+      padding: 40px;
+      width: 90%;
+      max-width: 1000px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      text-align: center;
+      color: #fff;
+    }
+
+    h2 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    label {
+      font-size: 14px;
+      display: block;
+      font-weight: 500;
+      text-align: left;
+      margin-top: 15px;
+    }
+
+    select, button, input, textarea {
+      padding: 12px 16px;
+      margin: 10px 5px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+    }
+
+    select, input, textarea {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+      outline: none;
+    }
+
+    textarea {
+      resize: none;
+    }
+
+    input::placeholder, textarea::placeholder {
+      color: #ccc;
+    }
+
+    select option {
+      color: #000;
+    }
+
+    button {
+      background-color: #00c6ff;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0072ff;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .mode-toggle {
+      background: #fff;
+      color: #0072ff;
+      border: none;
+      font-weight: bold;
+      padding: 10px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+
+    .text-boxes {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      margin-top: 20px;
+      align-items: flex-start;
+    }
+
+    .text-boxes .box {
+      flex: 1;
+    }
+
+    .text-boxes textarea {
+      width: 100%;
+      height: 100px;
+    }
+
+    #translateBtn {
+      background-color: #0072ff;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      width: 150px;
+      margin-top: 65px;
+    }
+
+    #translateBtn:hover {
+      background-color: #00c6ff;
+    }
+
+    audio {
+      margin-top: 20px;
+      width: 100%;
+    }
+
+    #recordingStatus {
+      color: #ff4d4d;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🌐 Swadeshi Voice Translator</h2>
+    <button class="mode-toggle" onclick="toggleMode()">🔁 Change Mode</button>
+
+    <!-- Text Translator Section -->
+    <div id="textMode">
+      <label for="srcTextLang">From Language</label>
+      <select id="srcTextLang"></select>
+
+      <label for="tgtTextLang">To Language</label>
+      <select id="tgtTextLang"></select>
+
+      <div class="text-boxes">
+        <div class="box">
+          <label for="inputText">Input Text</label>
+          <textarea id="inputText" placeholder="Type or paste text here..."></textarea>
+        </div>
+
+        <!-- Translate Button -->
+        <div>
+          <button id="translateBtn" onclick="translateText()">➡️ Translate</button>
+        </div>
+
+        <div class="box">
+          <label for="outputText">Output Text</label>
+          <textarea id="outputText" readonly placeholder="Translation will appear here..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Speech Translator Section -->
+    <!-- Speech Translator Section -->
+<div id="speechMode" class="hidden">
+  <label for="deviceId">Device ID</label>
+  <input type="text" id="deviceId" placeholder="e.g. device1" />
+
+  <div style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
+  <div style="flex: 1;">
+    <label for="srcSpeechLang">From Language</label>
+    <select id="srcSpeechLang"></select>
+  </div>
+
+  <div>
+    <button id="swapSpeechBtn" title="Swap languages" style="margin-top: 25px;">🔁</button>
+  </div>
+
+  <div style="flex: 1;">
+    <label for="tgtSpeechLang">To Language</label>
+    <select id="tgtSpeechLang"></select>
+  </div>
+</div>
+
+
+  <div style="margin-top: 20px;">
+    <button onclick="connectWS()">🔗 Connect</button>
+    <button id="speakBtn" disabled onclick="toggleRecording()">🎤 Start Recording</button>
+    <span id="recordingStatus"></span>
+    <button id="listenBtn" disabled onclick="replayAudio()">🔈 Listen</button>
+  </div>
+
+  <audio id="audioPlayer" controls></audio>
+</div>
+
+
+  <script>
+    const langs = [
+      "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", "Hindi", "Kannada", "Kashmiri",
+      "Konkani", "Maithili", "Malayalam", "Manipuri", "Marathi", "Odia", "Punjabi",
+      "Sanskrit", "Santhali", "Sindhi", "Tamil", "Telugu", "Urdu", "English",
+      "Bhojpuri", "Chhattisgarhi", "Rajasthani"
+    ];
+
+    const srcTextLang = document.getElementById("srcTextLang");
+    const tgtTextLang = document.getElementById("tgtTextLang");
+    const srcSpeechLang = document.getElementById("srcSpeechLang");
+    const tgtSpeechLang = document.getElementById("tgtSpeechLang");
+
+    langs.forEach(lang => {
+      [srcTextLang, tgtTextLang, srcSpeechLang, tgtSpeechLang].forEach(sel => {
+        sel.add(new Option(lang, lang));
+      });
+    });
+
+    let isRecording = false;
+    let recorder, stream, ws, timer;
+    const speakBtn = document.getElementById("speakBtn");
+    const listenBtn = document.getElementById("listenBtn");
+    const recordingStatus = document.getElementById("recordingStatus");
+    const audioPlayer = document.getElementById("audioPlayer");
+
+    function toggleMode() {
+      document.getElementById("textMode").classList.toggle("hidden");
+      document.getElementById("speechMode").classList.toggle("hidden");
+    }
+
+    async function translateText() {
+      const text = document.getElementById("inputText").value.trim();
+      const src = srcTextLang.value;
+      const tgt = tgtTextLang.value;
+      if (!text) return alert("Enter text to translate.");
+
+      const res = await fetch("http://localhost:10000/translate-only/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, source_lang: src, target_lang: tgt })
+      });
+      const data = await res.json();
+      document.getElementById("outputText").value = data.translated_text || data.error || "Failed";
+    }
+
+    function connectWS() {
+      const src = srcSpeechLang.value;
+      const tgt = tgtSpeechLang.value;
+      const deviceId = document.getElementById("deviceId").value.trim();
+      if (!deviceId) return alert("Enter a device ID");
+
+      ws = new WebSocket(`ws://localhost:10000/ws/${src}/${tgt}/${deviceId}`);
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = () => {
+        console.log("✅ WebSocket connected");
+        speakBtn.disabled = false;
+      };
+
+      ws.onmessage = e => {
+        if (typeof e.data !== "string") {
+          const audioBlob = new Blob([e.data], { type: "audio/mpeg" });
+          audioPlayer.src = URL.createObjectURL(audioBlob);
+          audioPlayer.play();
+          listenBtn.disabled = false;
+        }
+      };
+
+      ws.onclose = () => {
+        speakBtn.disabled = true;
+        listenBtn.disabled = true;
+      };
+    }
+
+    async function toggleRecording() {
+      if (!isRecording) {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recorder = new MediaRecorder(stream);
+        let chunks = [];
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: "audio/webm" });
+          ws.send(blob);
+          speakBtn.textContent = "🎤 Start Recording";
+          recordingStatus.textContent = "";
+          stream.getTracks().forEach(t => t.stop());
+          isRecording = false;
+        };
+        recorder.start();
+        isRecording = true;
+        speakBtn.textContent = "🛑 Stop Recording";
+        recordingStatus.textContent = "Recording...";
+      } else {
+        recorder.stop();
+      }
+    }
+
+    function replayAudio() {
+      if (audioPlayer.src) audioPlayer.play();
+    }
+// Swap languages in speech mode
+document.getElementById("swapSpeechBtn").onclick = () => {
+  const temp = srcSpeechLang.value;
+  srcSpeechLang.value = tgtSpeechLang.value;
+  tgtSpeechLang.value = temp;
+  console.log(`🔁 Swapped speech: ${srcSpeechLang.value} → ${tgtSpeechLang.value}`);
+};
+
+
+  </script>
+</body>
+</html>
